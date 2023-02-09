@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'dart:convert';
 void main() {
   runApp(const MyApp());
 }
@@ -35,22 +36,63 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
+  late Future<List<dynamic>> _futureUsers;
+
+  @override
+  void initState() {
+    _futureUsers = fetchUsers();
+    super.initState();
+  }
+
+  Future<List<dynamic>> fetchUsers() async {
+    final response = await http.get('https://reqres.in/api/users?page=2');
+    if (response.statusCode == 200) {
+      return json.decode(response.body)['data'];
+    } else {
+      throw Exception('Failed to load data');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Reqres API"),
+        title: Text('Reqres API'),
       ),
-      body: Center(
+      body: Container(
         child: FutureBuilder(
-          future: fetchUsers(),
+          future: _futureUsers,
           builder: (context, snapshot) {
             if (snapshot.hasData) {
-              return Text(snapshot.data!.body);
+              List? users = snapshot.data;
+              return ListView.builder(
+                itemCount: users?.length,
+                itemBuilder: (context, index) {
+                  return Card(
+                    elevation: 5,
+                    child: ListTile(
+                      leading: CircleAvatar(
+                        backgroundImage: NetworkImage(users![index]['avatar']),
+                      ),
+                      title: Text(users![index]['first_name'] +
+                          ' ' +
+                          users[index]['last_name']),
+                      subtitle: Text(users[index]['email']),
+                    ),
+                  );
+                },
+              );
             } else if (snapshot.hasError) {
-              return Text("${snapshot.error}");
+              return Center(
+                child: Text(
+                  '${snapshot.error}',
+                  style: TextStyle(fontSize: 20),
+                ),
+              );
             }
-            return CircularProgressIndicator();
+            return Center(
+              child: CircularProgressIndicator(),
+            );
           },
         ),
       ),
